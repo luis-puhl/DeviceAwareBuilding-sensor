@@ -2,7 +2,7 @@
 const os = require('os');
 const dns = require('dns');
 
-var hostId = os.userInfo().username + '@' + os.hostname();
+const hostId = os.userInfo().username + '@' + os.hostname();
 var ips = [];
 
 dns.lookup(os.hostname(), (err, addresses, family) => {
@@ -20,6 +20,7 @@ function Device(mac){
 	this.mac = mac;
 	this.rssHistory = new Array();
 	this.ssidHistory = new Array();
+	client.publish(hostId + '', `Got new device with MAC ${JSON.stringify(mac)}`);
 	return this;
 }
 
@@ -36,8 +37,7 @@ var csvStream = csv()
 		devices[mac].ssidHistory[ssid] = curTime;
 	})
 	.on("end", function(){
-		console.log("done");
-		console.log(devices);
+		console.log("done with tshark");
 	});
 
 process.stdin.pipe(csvStream);
@@ -54,14 +54,39 @@ var client  = mqtt.connect('mqtt://200.145.148.226', {
 	}
 })
 
+function shutdown(){
+	client.end();
+	process.stdin.unpipe(csvStream);
+	csvStream.end();
+	console.log('Shutdown by remote call');
+}
+
 client.on('connect', function () {
 	client.subscribe('presence')
+	client.subscribe(hostId);	
+	
 	client.publish('presence', `Hello mqtt from ${hostId}`)
 	client.publish('presence', `${hostId}: got ips: ${JSON.stringify(ips)}`)
 })
 
 client.on('message', function (topic, message) {
 	// message is Buffer
-	console.log(message.toString())
-	client.end()
+	console.log(message.toString());
+	switch (topic){
+		case hostId:
+			var jsonMsg = {};
+			try {
+				jsonMsg = JSON.parse(message);
+			} catch (e) {
+				console.log("No json in topic " + topic);
+				break;
+			}
+			if (jsonMsg['config'] == 'shutdown'){
+				shutdown();
+			}
+			break;
+		default:
+			console.log("no action for topic " + topic);
+	}
 })
+
