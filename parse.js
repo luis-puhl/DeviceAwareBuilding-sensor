@@ -6,12 +6,7 @@ var hostId = os.userInfo().username + '@' + os.hostname();
 var ips = [];
 
 dns.lookup(os.hostname(), (err, addresses, family) => {
-	if (addresses != undefined){
-		addresses.forEach((a) => {
-			ips.push(a);
-			console.log(a);
-		});
-	}
+	ips.push(addresses);
 });
 
 /* ----------------------------------------------------------------------- */
