@@ -1,12 +1,25 @@
 
 const os = require('os');
-const dns = require('dns');
 
 const hostId = os.userInfo().username + '@' + os.hostname();
 var ips = [];
 
-dns.lookup(os.hostname(), (err, addresses, family) => {
-	ips.push(addresses);
+var ifaces = os.networkInterfaces();
+
+Object.keys(ifaces).forEach(function (ifname) {
+	var alias = 0;
+
+	ifaces[ifname].forEach(function (iface) {
+		ips.push(iface.address);
+		if (alias >= 1) {
+			// this single interface has multiple ipv4 addresses
+			console.log(ifname + ':' + alias, iface.address);
+		} else {
+			// this interface has only one ipv4 adress
+			console.log(ifname, iface.address);
+		}
+		++alias;
+	});
 });
 
 /* ----------------------------------------------------------------------- */
@@ -45,7 +58,7 @@ process.stdin.pipe(csvStream);
 /* ----------------------------------------------------------------------- */
 
 var mqtt = require('mqtt')
-var client  = mqtt.connect('mqtt://200.145.148.226', {
+var client	= mqtt.connect('mqtt://200.145.148.226', {
 	will: {
 		topic: hostId,
 		payload: `Last will: Host ${hostId} is down from ${JSON.stringify(ips)}`,
@@ -63,8 +76,8 @@ function shutdown(){
 
 client.on('connect', function () {
 	client.subscribe('presence')
-	client.subscribe(hostId);	
-	
+	client.subscribe(hostId);
+
 	client.publish('presence', `Hello mqtt from ${hostId}`)
 	client.publish('presence', `${hostId}: got ips: ${JSON.stringify(ips)}`)
 })
@@ -89,4 +102,3 @@ client.on('message', function (topic, message) {
 			console.log("no action for topic " + topic);
 	}
 })
-
