@@ -17,19 +17,60 @@ class Device {
 }
 
 function getReport(){
+	var rssDevices = [];
 	for (let device of devices){
+		var rssArray = [];
 		for (let rss of device.rssHistory){
-			// from tshark "-69,-69"
-			/**
-			 * TODO: @junqueira implementa a media, mediana e STD. DEv
-		 	**/
+			var number = Regex.Match(rss, @"\d+").Value; //get first integer from each Rss string on rssHistory
+			rssArray.push(number); //list of rss for a device
+			rssDevices.push(number); //list of rss from all devices
 		}
+		//statistics for a device
+		var avg = arrayAvg(rssArray);
+		var variance = arrayVariance(rssArray);
+		var std = STD(variance);
 	}
+	//statistics for all devices
+	var avgDevices = arrayAvg(rssDevices);
+	var varianceDevices = arrayVariance(rssDevices);
+	var std = STD(varianceDevices);
+	 
 	return {
 		devicesCout: devices.length,
 	}
 }
+/*Math functions -------------------------------------------------------------*/
+function arrayAvg(array){ //Avg function
+  var sum = 0;
 
+  for(var i = 0; i < array.length; i++) {
+   sum = sum + array[i];
+   }
+
+  var avg = sum / array.length;
+
+  return avg;
+}
+
+function arrayVariance(array){//variance function
+  var avg = arrayAvg(array);
+  var sum = 0;
+  for(var i = 0; i < array.length; i++){
+    sum = sum + Math.pow((array[i]-avg),2);
+  }
+  var variance = sum / (array.length - 1);
+
+  return variance;
+
+}
+
+function STD(variance){
+
+  var std = Math.sqrt(variance);
+
+  return std;
+
+}
 /* ----------------------------------------------------------------------- */
 // processs startup
 function spawnTshark(){
