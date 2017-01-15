@@ -89,6 +89,7 @@ function shutdown(){
 	}
 	try {
 		clientMqtt.end();
+		clientMqtt.publish('presence', util.hostId + ' is going down.');
 	} catch (e){
 		console.error(e.message + 'while app MQTT shutdown');
 	}

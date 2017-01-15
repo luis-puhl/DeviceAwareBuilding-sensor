@@ -14,63 +14,63 @@ class Device {
 		this.ssidHistory = new Array();
 		emitterInstance.emit('newDevice', this);
 	}
+	updateStatistics(size, avg, variance, stdDeviation){
+		this.rssStatistics = {
+			size:			size,
+			avg:			avg,
+			variance:		variance,
+			stdDeviation:	stdDeviation,
+			time:			new Date(),
+		};
+	}
 }
 
 function getReport(){
-	var rssDevices = [];
+	let rssDevices = [];
 	for (let device of devices){
-		var rssArray = [];
+		let rssArray = [];
 		for (let rss of device.rssHistory){
-			var number = Regex.Match(rss, @"\d+").Value; //get first integer from each Rss string on rssHistory
-			rssArray.push(number); //list of rss for a device
-			rssDevices.push(number); //list of rss from all devices
+			 //get first integer from each Rss string on rssHistory
+			let number = parseInt(rss.split(",")[0].split('-')[1]);
+			//list of rss for a device
+			rssArray.push(number);
+			//list of rss from all devices
+			rssDevices.push(number);
 		}
 		//statistics for a device
-		var avg = arrayAvg(rssArray);
-		var variance = arrayVariance(rssArray);
-		var std = STD(variance);
+		let avg = arrayAvg(rssArray);
+		let variance = arrayVariance(rssArray, avg);
+		let std = STD(variance);
+		device.updateStatistics(device.rssHistory.length, avg, variance, std);
 	}
 	//statistics for all devices
-	var avgDevices = arrayAvg(rssDevices);
-	var varianceDevices = arrayVariance(rssDevices);
-	var std = STD(varianceDevices);
-	 
+	let avgDevices = arrayAvg(rssDevices);
+	let varianceDevices = arrayVariance(rssDevices);
+	let std = Math.sqrt(varianceDevices);
+
 	return {
 		devicesCout: devices.length,
+		overallAverage: avgDevices,
+		overallStandardDeviation: std,
 	}
 }
 /*Math functions -------------------------------------------------------------*/
 function arrayAvg(array){ //Avg function
-  var sum = 0;
-
-  for(var i = 0; i < array.length; i++) {
-   sum = sum + array[i];
-   }
-
-  var avg = sum / array.length;
-
-  return avg;
+	let sum = 0;
+	for(let i = 0; i < array.length; i++) {
+		sum += array[i];
+	}
+	return sum / array.length;
 }
 
-function arrayVariance(array){//variance function
-  var avg = arrayAvg(array);
-  var sum = 0;
-  for(var i = 0; i < array.length; i++){
-    sum = sum + Math.pow((array[i]-avg),2);
-  }
-  var variance = sum / (array.length - 1);
-
-  return variance;
-
+function arrayVariance(array, avg){//variance function
+	let sum = 0;
+	for(let i = 0; i < array.length; i++){
+		sum += Math.pow(( array[i] - avg ), 2);
+	}
+	return sum / (array.length - 1);
 }
 
-function STD(variance){
-
-  var std = Math.sqrt(variance);
-
-  return std;
-
-}
 /* ----------------------------------------------------------------------- */
 // processs startup
 function spawnTshark(){
@@ -128,7 +128,7 @@ let csvStream = csv()
 		let mac = data[0];
 		let rss = data[1];
 		let ssid = data[2];
-		let macResolved =  data[3];
+		let macResolved =	data[3];
 		let curTime = new Date();
 		if (!devices[mac]){
 			devices[mac] = new Device(mac, macResolved);
