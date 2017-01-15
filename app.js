@@ -3,6 +3,17 @@ const appUtil = require('./util.js');
 
 appUtil.autoUpdate();
 
+process.on('SIGINT', () => {
+	console.log('Received SIGINT.');
+	shutdown();
+});
+process.on('SIGTERM', () => {
+	console.log('Received SIGTERM.');
+	shutdown();
+});
+
+
+
 /* ----------------------------------------------------------------------- */
 
 const Tshark = require('./tshark.js');
@@ -10,7 +21,11 @@ let tshark;
 try {
 	let tshark = Tshark();
 	tshark.emitterInstance.on('newDevice', (device) => {
-		clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device.mac)}`);
+		try {
+			clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device.mac)}`);
+		} catch (e){
+			console.error('lost MQTT connection');
+		}
 	})
 } catch (e){
 	clientMqtt.publish(appUtil.hostId , e.message);
@@ -42,7 +57,7 @@ clientMqtt.on('message', function (topic, message) {
 	console.log(message.toString());
 	switch (topic){
 		case 'ADMIN':
-			switch (message) {
+			switch (message.toString()) {
 				case 'shutdown':
 					shutdown();
 					break;
@@ -50,7 +65,6 @@ clientMqtt.on('message', function (topic, message) {
 			}
 			break;
 		default:
-			console.log("no action for topic " + topic);
 	}
 })
 
