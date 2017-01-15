@@ -6,10 +6,16 @@ appUtil.autoUpdate();
 /* ----------------------------------------------------------------------- */
 
 const Tshark = require('./tshark.js');
-let tshark = Tshark();
-tshark.emitterInstance.on('newDevice', (device) => {
-	clientMqtt.publish(appUtil.hostId + '', `Got new device with MAC ${JSON.stringify(device.mac)}`);
-})
+let tshark;
+try {
+	let tshark = Tshark();
+	tshark.emitterInstance.on('newDevice', (device) => {
+		clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device.mac)}`);
+	})
+} catch (e){
+	clientMqtt.publish(appUtil.hostId , e.message);
+	shutdown();
+}
 
 /* ----------------------------------------------------------------------- */
 
@@ -34,16 +40,12 @@ clientMqtt.on('message', function (topic, message) {
 	// message is Buffer
 	console.log(message.toString());
 	switch (topic){
-		case appUtil.hostId:
-			let jsonMsg = {};
-			try {
-				jsonMsg = JSON.parse(message);
-			} catch (e) {
-				console.log("No json in topic " + topic);
-				break;
-			}
-			if (jsonMsg['config'] == 'shutdown'){
-				shutdown();
+		case 'ADMIN':
+			switch (message) {
+				case 'shutdown':
+					shutdown();
+					break;
+				default:
 			}
 			break;
 		default:
@@ -54,6 +56,14 @@ clientMqtt.on('message', function (topic, message) {
 
 function shutdown(){
 	console.log('Shutdown by remote call');
-	tshark.shutdown();
-	clientMqtt.end();
+	try {
+		tshark.shutdown();
+	} catch (e){
+		console.error(e.message);
+	}
+	try {
+		clientMqtt.end();
+	} catch (e){
+		console.error(e.message);
+	}
 }

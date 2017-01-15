@@ -39,6 +39,11 @@ function spawnTshark(){
 
 	console.log(JSON.stringify( iwFaces ));
 
+	if (iwFaces.length < 1){
+		console.error('No suitable interface was found');
+		throw new Error('No suitable interface was found');
+	}
+
 	let childIface = iwFaces[0];
 
 	const spawn = require('child_process').spawn;
@@ -86,9 +91,9 @@ function shutdown(){
 }
 
 module.exports = () => {
-	
+
 	tsharkChild = spawnTshark();
-	
+
 	tsharkChild.stderr.on('data', (data) => {
 		/* for future use */
 		console.error(`stderr: ${data}`);
@@ -96,9 +101,9 @@ module.exports = () => {
 	tsharkChild.on('close', (code) => {
 		console.log(`child process exited with code ${code}`);
 	});
-	
+
 	tsharkChild.stdout.pipe(csvStream);
-	
+
 	return {
 		getDevices: () => Array.from(devices),
 		emitterInstance: emitterInstance,
