@@ -2,12 +2,12 @@
 const os = require('os');
 
 const hostId = os.userInfo().username + '@' + os.hostname();
-var ips = [];
+let ips = [];
 
-var ifaces = os.networkInterfaces();
+let ifaces = os.networkInterfaces();
 
 Object.keys(ifaces).forEach(function (ifname) {
-	var alias = 0;
+	let alias = 0;
 
 	ifaces[ifname].forEach(function (iface) {
 		if (iface.internal === true){
@@ -31,8 +31,8 @@ Object.keys(ifaces).forEach(function (ifname) {
 
 /* ----------------------------------------------------------------------- */
 
-var csv = require("fast-csv");
-var devices = new Array();
+let csv = require("fast-csv");
+let devices = new Array();
 
 function Device(mac){
 	this.mac = mac;
@@ -42,12 +42,12 @@ function Device(mac){
 	return this;
 }
 
-var csvStream = csv()
+let csvStream = csv()
 	.on("data", function(data){
-		var mac = data[0];
-		var rss = data[1];
-		var ssid = data[2];
-		var curTime = new Date();
+		let mac = data[0];
+		let rss = data[1];
+		let ssid = data[2];
+		let curTime = new Date();
 		if (!devices[mac]){
 			devices[mac] = new Device(mac);
 		}
@@ -58,25 +58,52 @@ var csvStream = csv()
 		console.log("done with tshark");
 	});
 
-const spawn = require('child_process').spawn;
-const childPacketCount = 1000;
-const childIface = 'wlan0';
-const tsharkChild = spawn(
-	'tshark', [
-		'-I',
-		'-i', childIface,
-		'-T', 'fields',
-		'-E', 'separator=,',
-		'-E', 'quote=d',
-		'-e', 'wlan.sa',
-		'-e', 'radiotap.dbm_antsignal',
-		'-e', 'wlan_mgt.ssid',
-		'-Y', 'wlan.sa',
-		'-c', childPacketCount
-	]);
+/* ----------------------------------------------------------------------- */
+// processs startup
+function spawnTshark(childPacketCount = 1000){
+	const execSync = require('child_process').execSync;
+	const stdioConf = {stdio: ['ignore', 'pipe', 'ignore']};
 
-tsharkChild.stdout.setEncoding('utf8');
-tsharkChild.stdout.pipe(csvStream);
+	let iwConfList = execSync('iwconfig | grep wlan', stdioConf).toString().split('\n');
+	let iwFaces = [];
+	for (let iwFace of iwConfList){
+		let iface = iwFace.split('\t')[0].split(' ')[0];
+		if (iface.length > 1){
+			try {
+				execSync(`sudo ifconfig ${iface} down`, stdioConf);
+				execSync(`sudo iwconfig ${iface} mode monitor`, stdioConf);
+				execSync(`sudo ifconfig ${iface} up`, stdioConf);
+			} catch (e) {
+				console.error(`iface ${iface} will not be used`);
+				continue;
+			}
+			iwFaces.push( iface );
+		}
+	}
+
+	console.log(JSON.stringify( iwFaces ));
+
+	let childIface = iwFaces[0];
+
+	const spawn = require('child_process').spawn;
+	const tsharkChild = spawn(
+		'tshark', [
+			'-I',
+			'-i', childIface,
+			'-T', 'fields',
+			'-E', 'separator=,',
+			'-E', 'quote=d',
+			'-e', 'wlan.sa',
+			'-e', 'radiotap.dbm_antsignal',
+			'-e', 'wlan_mgt.ssid',
+			'-Y', 'wlan.sa',
+			'-c', childPacketCount
+		]);
+	tsharkChild.stdout.setEncoding('utf8');
+	return tsharkChild;
+}
+
+let tsharkChild = spawnTshark();
 
 tsharkChild.stderr.on('data', (data) => {
 	/* for future use */
@@ -89,10 +116,13 @@ tsharkChild.on('close', (code) => {
 });
 
 
+
+tsharkChild.stdout.pipe(csvStream);
+
 /* ----------------------------------------------------------------------- */
 
-var mqtt = require('mqtt');
-var client	= mqtt.connect('mqtt://200.145.148.226', {
+const mqtt = require('mqtt');
+let client	= mqtt.connect('mqtt://200.145.148.226', {
 	will: {
 		topic: hostId,
 		payload: `Last will: Host ${hostId} is down from ${JSON.stringify(ips)}`,
@@ -121,7 +151,7 @@ client.on('message', function (topic, message) {
 	console.log(message.toString());
 	switch (topic){
 		case hostId:
-			var jsonMsg = {};
+			let jsonMsg = {};
 			try {
 				jsonMsg = JSON.parse(message);
 			} catch (e) {
