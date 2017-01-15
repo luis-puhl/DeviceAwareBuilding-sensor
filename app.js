@@ -30,7 +30,8 @@ let clientMqtt	= mqtt.connect('mqtt://200.145.148.226', {
 })
 
 clientMqtt.on('connect', function () {
-	clientMqtt.subscribe('presence')
+	clientMqtt.subscribe('presence');
+	clientMqtt.subscribe('ADMIN');
 	clientMqtt.subscribe(appUtil.hostId);
 
 	clientMqtt.publish('presence', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`)
