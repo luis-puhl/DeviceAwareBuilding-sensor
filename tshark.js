@@ -2,7 +2,7 @@
 const csv = require("fast-csv");
 const EventEmitter = require("events");
 
-let devices = new Array();
+let devices = [];
 
 const emitterInstance = new EventEmitter();
 
@@ -27,9 +27,11 @@ class Device {
 
 function getReport(){
 	let rssDevices = [];
-	for (let device of devices){
+	for (let deviceKey in devices){
+		let device = devices[deviceKey];
 		let rssArray = [];
-		for (let rss of device.rssHistory){
+		for (let rssKey in device.rssHistory){
+			let rss = device.rssHistory[rssKey];
 			 //get first integer from each Rss string on rssHistory
 			let number = parseInt(rss.split(",")[0].split('-')[1]);
 			//list of rss for a device
@@ -130,7 +132,7 @@ let csvStream = csv()
 		let ssid = data[2];
 		let macResolved =	data[3];
 		let curTime = new Date();
-		if (!devices[mac]){
+		if (! devices[mac]){
 			devices[mac] = new Device(mac, macResolved);
 		}
 		devices[mac].rssHistory[curTime] = rss;

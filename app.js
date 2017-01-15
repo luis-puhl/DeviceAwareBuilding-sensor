@@ -14,24 +14,6 @@ process.on('SIGTERM', () => {
 
 /* ----------------------------------------------------------------------- */
 
-const Tshark = require('./tshark.js');
-let tshark;
-try {
-	let tshark = Tshark();
-	tshark.emitterInstance.on('newDevice', (device) => {
-		try {
-			clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device)}`);
-		} catch (e){
-			console.error('lost MQTT connection');
-		}
-	})
-} catch (e){
-	clientMqtt.publish(appUtil.hostId , e.message);
-	shutdown();
-}
-
-/* ----------------------------------------------------------------------- */
-
 const mqtt = require('mqtt');
 let clientMqtt	= mqtt.connect('mqtt://200.145.148.226', {
 	will: {
@@ -42,9 +24,20 @@ let clientMqtt	= mqtt.connect('mqtt://200.145.148.226', {
 	}
 })
 
+
+function doReport() {
+	let report = {
+		host: appUtil.hostId,
+		uptime: process.uptime(),
+		sensor: tshark.getReport(),
+	};
+	clientMqtt.publish('devices/report', JSON.stringify(report))
+}
+
 clientMqtt.on('connect', function () {
 	clientMqtt.subscribe('presence');
 	clientMqtt.subscribe('ADMIN');
+	clientMqtt.subscribe('devices');
 	clientMqtt.subscribe(appUtil.hostId);
 
 	clientMqtt.publish('presence', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`)
@@ -57,12 +50,7 @@ clientMqtt.on('message', function (topic, message) {
 		case 'devices':
 			switch (message.toString()) {
 				case 'report':
-					let report = {
-						host: appUtil.hostId,
-						uptime: process.uptime(),
-						sensor: tshark.getReport(),
-					};
-					clientMqtt.publish('devices/report', JSON.stringify(report))
+					doReport();
 					break;
 				default:
 			}
@@ -79,6 +67,23 @@ clientMqtt.on('message', function (topic, message) {
 	}
 })
 
+/* ----------------------------------------------------------------------- */
+
+const Tshark = require('./tshark.js');
+let tshark;
+try {
+	tshark = Tshark();
+	tshark.emitterInstance.on('newDevice', (device) => {
+		try {
+			clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device)}`);
+		} catch (e){
+			console.error('lost MQTT connection');
+		}
+	});
+} catch (e) {
+	clientMqtt.publish(appUtil.hostId , e.message);
+	shutdown();
+}
 
 function shutdown(){
 	console.log('Shutdown by remote call');
