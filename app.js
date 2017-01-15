@@ -12,8 +12,6 @@ process.on('SIGTERM', () => {
 	shutdown();
 });
 
-
-
 /* ----------------------------------------------------------------------- */
 
 const Tshark = require('./tshark.js');
@@ -22,7 +20,7 @@ try {
 	let tshark = Tshark();
 	tshark.emitterInstance.on('newDevice', (device) => {
 		try {
-			clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device.mac)}`);
+			clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device)}`);
 		} catch (e){
 			console.error('lost MQTT connection');
 		}
@@ -55,7 +53,20 @@ clientMqtt.on('connect', function () {
 clientMqtt.on('message', function (topic, message) {
 	// message is Buffer
 	console.log(message.toString());
-	switch (topic){
+	switch (topic.toString()){
+		case 'devices':
+			switch (message.toString()) {
+				case 'report':
+					let report = {
+						host: appUtil.hostId,
+						uptime: process.uptime(),
+						sensor: tshark.getReport(),
+					};
+					clientMqtt.publish('devices/report', JSON.stringify(report))
+					break;
+				default:
+			}
+			break;
 		case 'ADMIN':
 			switch (message.toString()) {
 				case 'shutdown':
@@ -74,11 +85,11 @@ function shutdown(){
 	try {
 		tshark.shutdown();
 	} catch (e){
-		console.error(e.message);
+		console.error(e.message + 'while app tshark shutdown');
 	}
 	try {
 		clientMqtt.end();
 	} catch (e){
-		console.error(e.message);
+		console.error(e.message + 'while app MQTT shutdown');
 	}
 }

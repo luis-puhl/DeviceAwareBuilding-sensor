@@ -6,12 +6,28 @@ let devices = new Array();
 
 const emitterInstance = new EventEmitter();
 
-function Device(mac){
-	this.mac = mac;
-	this.rssHistory = new Array();
-	this.ssidHistory = new Array();
-	emitterInstance.emit('newDevice', this);
-	return this;
+class Device {
+	constructor(mac, macResolved){
+		this.mac = mac;
+		this.macResolved = macResolved;
+		this.rssHistory = new Array();
+		this.ssidHistory = new Array();
+		emitterInstance.emit('newDevice', this);
+	}
+}
+
+function getReport(){
+	for (let device of devices){
+		for (let rss of device.rssHistory){
+			// from tshark "-69,-69"
+			/**
+			 * TODO: @junqueira implementa a media, mediana e STD. DEv
+		 	**/
+		}
+	}
+	return {
+		devicesCout: devices.length,
+	}
 }
 
 /* ----------------------------------------------------------------------- */
@@ -57,6 +73,7 @@ function spawnTshark(){
 			'-e', 'wlan.sa',
 			'-e', 'radiotap.dbm_antsignal',
 			'-e', 'wlan_mgt.ssid',
+			'-e', 'wlan.sa_resolved',
 			'-Y', 'wlan.sa'
 		]);
 	tsharkChild.stdout.setEncoding('utf8');
@@ -70,9 +87,10 @@ let csvStream = csv()
 		let mac = data[0];
 		let rss = data[1];
 		let ssid = data[2];
+		let macResolved =  data[3];
 		let curTime = new Date();
 		if (!devices[mac]){
-			devices[mac] = new Device(mac);
+			devices[mac] = new Device(mac, macResolved);
 		}
 		devices[mac].rssHistory[curTime] = rss;
 		devices[mac].ssidHistory[ssid] = curTime;
@@ -85,9 +103,13 @@ let csvStream = csv()
 
 let tsharkChild;
 function shutdown(){
-	process.stdin.unpipe(csvStream);
-	csvStream.end();
-	tsharkChild.kill();
+	try {
+		process.stdin.unpipe(csvStream);
+		csvStream.end();
+		tsharkChild.kill();
+	} catch (e){
+		console.error(e.message + 'while tshark.js shutdown');
+	}
 }
 
 module.exports = () => {
@@ -108,5 +130,6 @@ module.exports = () => {
 		getDevices: () => Array.from(devices),
 		emitterInstance: emitterInstance,
 		shutdown: shutdown,
+		getReport: getReport,
 	};
 }
