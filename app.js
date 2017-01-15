@@ -60,6 +60,9 @@ clientMqtt.on('message', function (topic, message) {
 				case 'shutdown':
 					shutdown();
 					break;
+				case 'echo':
+						clientMqtt.publish(topic, message);
+						break;
 				default:
 			}
 			break;

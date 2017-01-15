@@ -42,7 +42,7 @@ function getReport(){
 		//statistics for a device
 		let avg = arrayAvg(rssArray);
 		let variance = arrayVariance(rssArray, avg);
-		let std = STD(variance);
+		let std = Math.sqrt(variance);
 		device.updateStatistics(device.rssHistory.length, avg, variance, std);
 	}
 	//statistics for all devices
