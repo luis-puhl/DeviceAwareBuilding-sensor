@@ -1,6 +1,8 @@
 
 const appUtil = require('./util.js');
 
+appUtil.autoUpdate();
+
 /* ----------------------------------------------------------------------- */
 
 const Tshark = require('./tshark.js');

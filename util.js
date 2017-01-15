@@ -31,3 +31,17 @@ for (let ifname in ifaces){
 exports.ips = ips;
 
 /* ----------------------------------------------------------------------- */
+
+/// autoupdate
+
+function autoUpdate(){
+	const execSync = require('child_process').execSync;
+	let gitPull = execSync('git pull').toString();
+	console.log(gitPull);
+	if ( gitPull != "Already up-to-date.\n" ){
+		console.warn("Just Updated, RESETING");
+		process.exit(0);
+	}
+}
+
+exports.autoUpdate = autoUpdate;
