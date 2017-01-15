@@ -78,9 +78,16 @@ let csvStream = csv()
 
 /* ----------------------------------------------------------------------- */
 
+let tsharkChild;
+function shutdown(){
+	process.stdin.unpipe(csvStream);
+	csvStream.end();
+	tsharkChild.kill();
+}
+
 module.exports = () => {
 	
-	let tsharkChild = spawnTshark();
+	tsharkChild = spawnTshark();
 	
 	tsharkChild.stderr.on('data', (data) => {
 		/* for future use */
@@ -88,7 +95,6 @@ module.exports = () => {
 	});
 	tsharkChild.on('close', (code) => {
 		console.log(`child process exited with code ${code}`);
-		client.end();
 	});
 	
 	tsharkChild.stdout.pipe(csvStream);
@@ -96,5 +102,6 @@ module.exports = () => {
 	return {
 		getDevices: () => Array.from(devices),
 		emitterInstance: emitterInstance,
+		shutdown: shutdown,
 	};
 }
