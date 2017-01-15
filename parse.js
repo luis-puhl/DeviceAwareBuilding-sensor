@@ -10,7 +10,14 @@ Object.keys(ifaces).forEach(function (ifname) {
 	var alias = 0;
 
 	ifaces[ifname].forEach(function (iface) {
+		if (iface.internal === true){
+			// skip loopbacks
+			return;
+		}
+		
+		// save IP for later
 		ips.push(iface.address);
+		
 		if (alias >= 1) {
 			// this single interface has multiple ipv4 addresses
 			console.log(ifname + ':' + alias, iface.address);
@@ -25,8 +32,6 @@ Object.keys(ifaces).forEach(function (ifname) {
 /* ----------------------------------------------------------------------- */
 
 var csv = require("fast-csv");
-process.stdin.setEncoding('utf8');
-
 var devices = new Array();
 
 function Device(mac){
@@ -53,11 +58,40 @@ var csvStream = csv()
 		console.log("done with tshark");
 	});
 
-process.stdin.pipe(csvStream);
+const spawn = require('child_process').spawn;
+const childPacketCount = 1000;
+const childIface = 'wlan0';
+const tsharkChild = spawn(
+	'tshark', [
+		'-I',
+		'-i', childIface,
+		'-T', 'fields',
+		'-E', 'separator=,',
+		'-E', 'quote=d',
+		'-e', 'wlan.sa',
+		'-e', 'radiotap.dbm_antsignal',
+		'-e', 'wlan_mgt.ssid',
+		'-Y', 'wlan.sa',
+		'-c', childPacketCount
+	]);
+
+tsharkChild.stdout.setEncoding('utf8');
+tsharkChild.stdout.pipe(csvStream);
+
+tsharkChild.stderr.on('data', (data) => {
+	/* for future use */
+	console.error(`stderr: ${data}`);
+});
+
+tsharkChild.on('close', (code) => {
+	console.log(`child process exited with code ${code}`);
+	client.end();
+});
+
 
 /* ----------------------------------------------------------------------- */
 
-var mqtt = require('mqtt')
+var mqtt = require('mqtt');
 var client	= mqtt.connect('mqtt://200.145.148.226', {
 	will: {
 		topic: hostId,

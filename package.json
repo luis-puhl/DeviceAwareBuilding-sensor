@@ -9,6 +9,9 @@
   "author": "Luis Puhl",
   "license": "ISC",
   "dependencies": {
-    "fast-csv": "^2.3.0"
+    "fast-csv": "^2.3.0",
+    "forever": "^0.15.3",
+    "forever-service": "^0.5.9",
+    "mqtt": "^2.2.1"
   }
 }
