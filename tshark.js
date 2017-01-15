@@ -47,7 +47,7 @@ function getReport(){
 	}
 	//statistics for all devices
 	let avgDevices = arrayAvg(rssDevices);
-	let varianceDevices = arrayVariance(rssDevices);
+	let varianceDevices = arrayVariance(rssDevices, avgDevices);
 	let std = Math.sqrt(varianceDevices);
 
 	return {
