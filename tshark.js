@@ -14,7 +14,7 @@ class Device {
 		this.ssidHistory = new Array();
 		emitterInstance.emit('newDevice', this);
 	}
-	updateStatistics(size, avg, variance, stdDeviation){
+	updateRssStatistics(size, avg, variance, stdDeviation){
 		this.rssStatistics = {
 			size			: size,
 			avg				: avg,
@@ -23,6 +23,36 @@ class Device {
 			time			: new Date(),
 		};
 	}
+	toJSON() {
+		let rssHistory = "";
+		for (let rss in this.rssHistory){
+			rssHistory += `"${rss}":"${rssHistory[rss]}",`
+		}
+		let ssidHistory = "";
+		for (let ssid in this.ssidHistory){
+			ssid += `"${ssid}":"${ssidHistory[rss]}",`
+		}
+		return `{
+		"mac":"${this.mac}",
+		"macResolved":"${this.macResolved}",
+		"rssHistory":{${rssHistory}},
+		"ssidHistory":{${ssidHistory}},
+		"rssStatistics":${JSON.stringify(this.rssStatistics)}
+		}`;
+	}
+}
+
+function updedateDevices() {
+	let mac = data[0];
+	let rss = data[1];
+	let ssid = data[2];
+	let macResolved =	data[3];
+	let curTime = new Date();
+	if (! devices[mac]){
+		devices[mac] = new Device(mac, macResolved);
+	}
+	devices[mac].rssHistory[curTime] = rss;
+	devices[mac].ssidHistory[ssid] = curTime;
 }
 
 function getReport(){
@@ -31,21 +61,23 @@ function getReport(){
 	for (let deviceKey in devices){
 		let device = devices[deviceKey];
 		let rssArray = [];
+		let rssHistoryLength = 0;
 		devicesCout++;
 		for (let rssKey in device.rssHistory){
 			let rss = device.rssHistory[rssKey];
-			 //get first integer from each Rss string on rssHistory
+			rssHistoryLength++;
+			// get first integer from each Rss string on rssHistory
 			let number = parseInt(rss.split(",")[0].split('-')[1]);
-			//list of rss for a device
+			// list of rss for a device
 			rssArray.push(number);
-			//list of rss from all devices
+			// list of rss from all devices
 			rssDevices.push(number);
 		}
 		//statistics for a device
 		let avg = arrayAvg(rssArray);
 		let variance = arrayVariance(rssArray, avg);
 		let std = Math.sqrt(variance);
-		device.updateStatistics(device.rssHistory.length, avg, variance, std);
+		device.updateRssStatistics(rssHistoryLength, avg, variance, std);
 	}
 	//statistics for all devices
 	let avgDevices = arrayAvg(rssDevices);
@@ -133,16 +165,7 @@ function spawnTshark(){
 
 let csvStream = csv()
 	.on("data", function(data){
-		let mac = data[0];
-		let rss = data[1];
-		let ssid = data[2];
-		let macResolved =	data[3];
-		let curTime = new Date();
-		if (! devices[mac]){
-			devices[mac] = new Device(mac, macResolved);
-		}
-		devices[mac].rssHistory[curTime] = rss;
-		devices[mac].ssidHistory[ssid] = curTime;
+		updedateDevices(data);
 	})
 	.on("end", function(){
 		console.log("done with tshark");

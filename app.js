@@ -46,7 +46,6 @@ function doDeiviceReport(macAddress) {
 clientMqtt.on('connect', function () {
 	clientMqtt.subscribe('ADMIN');
 	clientMqtt.subscribe('devices');
-	clientMqtt.subscribe(appUtil.hostId);
 
 	clientMqtt.publish('ADMIN', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`)
 })
@@ -93,21 +92,21 @@ try {
 		}
 	});
 } catch (e) {
-	clientMqtt.publish(appUtil.hostId , e.message);
+	clientMqtt.publish('ADMIN' , e.message);
 	shutdown();
 }
 
 function shutdown(){
 	console.log('Shutdown by remote call');
 	try {
+		clientMqtt.end();
+		clientMqtt.publish('ADMIN', util.hostId + ' is going down.');
+	} catch (e){
+		console.error(e.message + 'while app MQTT shutdown');
+	}
+	try {
 		tshark.shutdown();
 	} catch (e){
 		console.error(e.message + 'while app tshark shutdown');
-	}
-	try {
-		clientMqtt.end();
-		clientMqtt.publish('presence', util.hostId + ' is going down.');
-	} catch (e){
-		console.error(e.message + 'while app MQTT shutdown');
 	}
 }
