@@ -99,6 +99,7 @@ try {
 	tshark.emitterInstance.on('newDevice', (device) => {
 		try {
 			clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device)}`);
+			console.log(`Got new device with MAC ${JSON.stringify(device)}`);
 		} catch (e){
 			console.error('lost MQTT connection');
 		}

@@ -10,8 +10,8 @@ class Device {
 	constructor(mac, macResolved){
 		this.mac = mac;
 		this.macResolved = macResolved;
-		this.rssHistory = new Array();
-		this.ssidHistory = new Array();
+		this.rssHistory = {};
+		this.ssidHistory = {};
 		emitterInstance.emit('newDevice', this);
 	}
 	updateRssStatistics(size, avg, variance, stdDeviation){
@@ -24,21 +24,21 @@ class Device {
 		};
 	}
 	toJSON() {
-		let rssHistory = "";
+		let rssHistory = {};
 		for (let rss in this.rssHistory){
-			rssHistory += `"${rss}":"${rssHistory[rss]}",`
+			rssHistory[rss] = this.rssHistory[rss];
 		}
 		let ssidHistory = "";
 		for (let ssid in this.ssidHistory){
-			ssid += `"${ssid}":"${ssidHistory[ssid]}",`
+			ssidHistory[ssid] = this.ssidHistory[ssid];
 		}
-		return `{`
-		+`"mac":"${this.mac}",`
-		+`"macResolved":"${this.macResolved}",`
-		+`"rssHistory":{${rssHistory}},`
-		+`"ssidHistory":{${ssidHistory}},`
-		+`"rssStatistics":${JSON.stringify(this.rssStatistics)}`
-		+`}`;
+		return {
+			"mac":this.mac,
+			"macResolved":this.macResolved,
+			"rssHistory":rssHistory,
+			"ssidHistory":ssidHistory,
+			"rssStatistics":this.rssStatistics,
+		};
 	}
 }
 
