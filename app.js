@@ -100,7 +100,7 @@ function shutdown(){
 	console.log('Shutdown by remote call');
 	try {
 		clientMqtt.end();
-		clientMqtt.publish('ADMIN', util.hostId + ' is going down.');
+		clientMqtt.publish('ADMIN', appUtil.hostId + ' is going down.');
 	} catch (e){
 		console.error(e.message + 'while app MQTT shutdown');
 	}
