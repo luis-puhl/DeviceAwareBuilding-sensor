@@ -58,6 +58,10 @@ function getReport(){
 		overallStandardDeviation	: std,
 	}
 }
+function getDeviceReport(macAddress) {
+	getReport();
+	return devices[macAddress];
+}
 /*Math functions -------------------------------------------------------------*/
 function arrayAvg(array){ //Avg function
 	let sum = 0;
@@ -176,5 +180,6 @@ module.exports = () => {
 		emitterInstance		: emitterInstance,
 		shutdown			: shutdown,
 		getReport			: getReport,
+		getDeviceReport		: getDeviceReport,
 	};
 }

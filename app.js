@@ -34,13 +34,21 @@ function doReport() {
 	clientMqtt.publish('devices/report', JSON.stringify(report))
 }
 
+function doDeiviceReport(macAddress) {
+	let report = {
+		host		: appUtil.hostId,
+		uptime		: process.uptime(),
+		sensor		: tshark.getDeviceReport(macAddress),
+	};
+	clientMqtt.publish('devices/report', JSON.stringify(report))
+}
+
 clientMqtt.on('connect', function () {
-	clientMqtt.subscribe('presence');
 	clientMqtt.subscribe('ADMIN');
 	clientMqtt.subscribe('devices');
 	clientMqtt.subscribe(appUtil.hostId);
 
-	clientMqtt.publish('presence', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`)
+	clientMqtt.publish('ADMIN', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`)
 })
 
 clientMqtt.on('message', function (topic, message) {
@@ -53,6 +61,7 @@ clientMqtt.on('message', function (topic, message) {
 					doReport();
 					break;
 				default:
+					doDeiviceReport(message.toString());
 			}
 			break;
 		case 'ADMIN':
@@ -61,8 +70,8 @@ clientMqtt.on('message', function (topic, message) {
 					shutdown();
 					break;
 				case 'echo':
-						clientMqtt.publish(topic, message);
-						break;
+					clientMqtt.publish(topic, message);
+					break;
 				default:
 			}
 			break;
