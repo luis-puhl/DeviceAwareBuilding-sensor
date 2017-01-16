@@ -16,20 +16,22 @@ class Device {
 	}
 	updateStatistics(size, avg, variance, stdDeviation){
 		this.rssStatistics = {
-			size:			size,
-			avg:			avg,
-			variance:		variance,
-			stdDeviation:	stdDeviation,
-			time:			new Date(),
+			size			: size,
+			avg				: avg,
+			variance		: variance,
+			stdDeviation	: stdDeviation,
+			time			: new Date(),
 		};
 	}
 }
 
 function getReport(){
 	let rssDevices = [];
+	let devicesCout = 0;
 	for (let deviceKey in devices){
 		let device = devices[deviceKey];
 		let rssArray = [];
+		devicesCout++;
 		for (let rssKey in device.rssHistory){
 			let rss = device.rssHistory[rssKey];
 			 //get first integer from each Rss string on rssHistory
@@ -51,9 +53,9 @@ function getReport(){
 	let std = Math.sqrt(varianceDevices);
 
 	return {
-		devicesCout: devices.length,
-		overallAverage: avgDevices,
-		overallStandardDeviation: std,
+		devicesCout					: devicesCout,
+		overallAverage				: avgDevices,
+		overallStandardDeviation	: std,
 	}
 }
 /*Math functions -------------------------------------------------------------*/
@@ -170,9 +172,9 @@ module.exports = () => {
 	tsharkChild.stdout.pipe(csvStream);
 
 	return {
-		getDevices: () => Array.from(devices),
-		emitterInstance: emitterInstance,
-		shutdown: shutdown,
-		getReport: getReport,
+		getDevices			: () => Array.from(devices),
+		emitterInstance		: emitterInstance,
+		shutdown			: shutdown,
+		getReport			: getReport,
 	};
 }

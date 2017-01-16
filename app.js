@@ -17,19 +17,19 @@ process.on('SIGTERM', () => {
 const mqtt = require('mqtt');
 let clientMqtt	= mqtt.connect('mqtt://200.145.148.226', {
 	will: {
-		topic: appUtil.hostId,
-		payload: `Last will: Host ${appUtil.hostId} is down from ${JSON.stringify(appUtil.ips)}`,
-		qos: 2,
-		retain: true
+		topic		: appUtil.hostId,
+		payload		: `Last will: Host ${appUtil.hostId} is down from ${JSON.stringify(appUtil.ips)}`,
+		qos			: 2,
+		retain		: true
 	}
 })
 
 
 function doReport() {
 	let report = {
-		host: appUtil.hostId,
-		uptime: process.uptime(),
-		sensor: tshark.getReport(),
+		host		: appUtil.hostId,
+		uptime		: process.uptime(),
+		sensor		: tshark.getReport(),
 	};
 	clientMqtt.publish('devices/report', JSON.stringify(report))
 }
