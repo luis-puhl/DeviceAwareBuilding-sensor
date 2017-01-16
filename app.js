@@ -31,7 +31,7 @@ function doReport() {
 		uptime		: process.uptime(),
 		sensor		: tshark.getReport(),
 	};
-	clientMqtt.publish('devices/report', JSON.stringify(report))
+	clientMqtt.publish('devices/report', JSON.stringify(report));
 }
 
 function doDeiviceReport(macAddress) {
@@ -40,7 +40,16 @@ function doDeiviceReport(macAddress) {
 		uptime		: process.uptime(),
 		sensor		: tshark.getDeviceReport(macAddress),
 	};
-	clientMqtt.publish('devices/report', JSON.stringify(report))
+	clientMqtt.publish('devices/report', JSON.stringify(report));
+}
+
+function doList() {
+	let report = {
+		host		: appUtil.hostId,
+		uptime		: process.uptime(),
+		sensor		: Object.keys(tshark.getDevices()),
+	};
+	clientMqtt.publish('devices/report', JSON.stringify(report));
 }
 
 clientMqtt.on('connect', function () {
@@ -56,6 +65,9 @@ clientMqtt.on('message', function (topic, message) {
 	switch (topic.toString()){
 		case 'devices':
 			switch (message.toString()) {
+				case 'list':
+					doList();
+					break;
 				case 'report':
 					doReport();
 					break;

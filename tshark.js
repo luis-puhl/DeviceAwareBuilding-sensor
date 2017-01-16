@@ -20,7 +20,7 @@ class Device {
 			avg				: avg,
 			variance		: variance,
 			stdDeviation	: stdDeviation,
-			time			: new Date(),
+			time			: (new Date()).toISOString(),
 		};
 	}
 	toJSON() {
@@ -32,13 +32,13 @@ class Device {
 		for (let ssid in this.ssidHistory){
 			ssid += `"${ssid}":"${ssidHistory[ssid]}",`
 		}
-		return `{
-		"mac":"${this.mac}",
-		"macResolved":"${this.macResolved}",
-		"rssHistory":{${rssHistory}},
-		"ssidHistory":{${ssidHistory}},
-		"rssStatistics":${JSON.stringify(this.rssStatistics)}
-		}`;
+		return `{`
+		+`"mac":"${this.mac}",`
+		+`"macResolved":"${this.macResolved}",`
+		+`"rssHistory":{${rssHistory}},`
+		+`"ssidHistory":{${ssidHistory}},`
+		+`"rssStatistics":${JSON.stringify(this.rssStatistics)}`
+		+`}`;
 	}
 }
 
@@ -47,7 +47,7 @@ function updedateDevices(data) {
 	let rss = data[1];
 	let ssid = data[2];
 	let macResolved =	data[3];
-	let curTime = new Date();
+	let curTime = (new Date()).toISOString();
 	if (! devices[mac]){
 		devices[mac] = new Device(mac, macResolved);
 	}
