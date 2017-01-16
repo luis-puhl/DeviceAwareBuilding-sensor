@@ -42,7 +42,7 @@ class Device {
 	}
 }
 
-function updedateDevices() {
+function updedateDevices(data) {
 	let mac = data[0];
 	let rss = data[1];
 	let ssid = data[2];
