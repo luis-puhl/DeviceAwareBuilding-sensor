@@ -30,7 +30,7 @@ class Device {
 		}
 		let ssidHistory = "";
 		for (let ssid in this.ssidHistory){
-			ssid += `"${ssid}":"${ssidHistory[rss]}",`
+			ssid += `"${ssid}":"${ssidHistory[ssid]}",`
 		}
 		return `{
 		"mac":"${this.mac}",
