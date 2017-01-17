@@ -56,9 +56,6 @@ function updedateDevices(data) {
 		ssid			: data[5],
 	};
 
-	if (wlan.sa != wlan.ta){
-		console.log(`Got different transmitter and sender MAC: SA[${wlan.sa}] != TA[${wlan.ta}]`);
-	}
 
 	let curTime = (new Date()).toISOString();
 	if (! devices[wlan.sa]){
