@@ -81,7 +81,7 @@ clientMqtt.on('message', function (topic, message) {
 					shutdown();
 					break;
 				case 'echo':
-					clientMqtt.publish(topic, message);
+					clientMqtt.publish(topic, appUtil.hostId + ' ack');
 					break;
 				default:
 			}

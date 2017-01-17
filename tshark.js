@@ -11,6 +11,7 @@ class Device {
 		this.macResolved = macResolved;
 		this.rssHistory = {};
 		this.ssidHistory = {};
+		this.taHistory = [];
 		emitterInstance.emit('newDevice', this);
 	}
 	updateRssStatistics(size, avg, variance, stdDeviation){
@@ -42,16 +43,30 @@ class Device {
 }
 
 function updedateDevices(data) {
-	let mac = data[0];
-	let rss = data[1];
-	let ssid = data[2];
-	let macResolved = data[3];
-	let curTime = (new Date()).toISOString();
-	if (! devices[mac]){
-		devices[mac] = new Device(mac, macResolved);
+	let wlan = {
+		sa				: data[0], // sender address
+		sa_resolved		: data[1], // sender address resolved
+		ta				: data[2], // transmitter address
+		ta_resolved		: data[3], // transmitter address resolved
+	};
+	let radiotap = {
+		dbm_antsignal	: data[4],
+	};
+	let wlan_mgt = {
+		ssid			: data[5],
+	};
+
+	if (wlan.sa != wlan.ta){
+		console.log(`Got different transmitter and sender MAC: SA[${wlan.sa}] != TA[${wlan.ta}]`);
 	}
-	devices[mac].rssHistory[curTime] = rss;
-	devices[mac].ssidHistory[ssid] = curTime;
+
+	let curTime = (new Date()).toISOString();
+	if (! devices[wlan.sa]){
+		devices[wlan.sa] = new Device(wlan.sa, wlan.sa_resolved);
+	}
+	devices[wlan.sa].rssHistory[curTime] = radiotap.dbm_antsignal;
+	devices[wlan.sa].ssidHistory[ssid] = curTime;
+	devices[wlan.sa].taHistory[] = {'ta': wlan.ta, 'ta_resolved': wlan.ta_resolved};
 }
 
 function getReport(){
@@ -101,7 +116,6 @@ function arrayAvg(array){ //Avg function
 	}
 	return sum / array.length;
 }
-
 function arrayVariance(array, avg){//variance function
 	let sum = 0;
 	for(let i = 0; i < array.length; i++){
@@ -151,9 +165,11 @@ function spawnTshark(){
 			'-E', 'separator=,',
 			'-E', 'quote=d',
 			'-e', 'wlan.sa',
+			'-e', 'wlan.sa_resolved',
+			'-e', 'wlan.ta',
+			'-e', 'wlan.ta_resolved',
 			'-e', 'radiotap.dbm_antsignal',
 			'-e', 'wlan_mgt.ssid',
-			'-e', 'wlan.sa_resolved',
 			'-Y', 'wlan.sa'
 		]);
 	tsharkChild.stdout.setEncoding('utf8');
