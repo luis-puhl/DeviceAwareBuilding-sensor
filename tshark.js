@@ -127,7 +127,13 @@ function spawnTshark(){
 	const execSync = require('child_process').execSync;
 	const stdioConf = {stdio: ['ignore', 'pipe', 'ignore']};
 
-	let iwConfList = execSync('iwconfig | grep wlan', stdioConf).toString().split('\n');
+	let iwConfList = "";
+	try {
+		iwConfList = execSync('iwconfig | grep wlan', stdioConf).toString().split('\n');
+	} catch (e){
+		console.error('No suitable interface was found');
+		throw new Error('No suitable interface was found');
+	}
 	let iwFaces = [];
 	for (let iwFace of iwConfList){
 		let iface = iwFace.split('\t')[0].split(' ')[0];

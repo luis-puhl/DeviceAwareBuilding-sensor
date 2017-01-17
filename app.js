@@ -14,17 +14,6 @@ process.on('SIGTERM', () => {
 
 /* ----------------------------------------------------------------------- */
 
-const mqtt = require('mqtt');
-let clientMqtt	= mqtt.connect('mqtt://200.145.148.226', {
-	will: {
-		topic		: appUtil.hostId,
-		payload		: `Last will: Host ${appUtil.hostId} is down from ${JSON.stringify(appUtil.ips)}`,
-		qos			: 2,
-		retain		: true
-	}
-})
-
-
 function doReport() {
 	let report = {
 		host		: appUtil.hostId,
@@ -52,13 +41,33 @@ function doList() {
 	clientMqtt.publish('devices/report', JSON.stringify(report));
 }
 
+/* ----------------------------------------------------------------------- */
+
+const mqtt = require('mqtt');
+const config = require('./.config');
+let clientMqtt	= mqtt.connect(`mqtt://${config.mqttHost}:${config.mqttPort}`, {
+	username	: config.mqttUser,
+	password	: config.mqttPwd,
+	will		: {
+		topic		: appUtil.hostId,
+		payload		: `Last will: Host ${appUtil.hostId} is down from ${JSON.stringify(appUtil.ips)}`,
+		qos			: 2,
+		retain		: true
+	},
+})
+
+clientMqtt.on('error', function (err) {
+	console.error('[MQTT error]');
+	console.error(err);
+})
 clientMqtt.on('connect', function () {
+	console.log('MQTT connect');
 	clientMqtt.subscribe('ADMIN');
 	clientMqtt.subscribe('devices');
 
-	clientMqtt.publish('ADMIN', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`)
+	clientMqtt.publish('ADMIN', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`);
+	startTshark();
 })
-
 clientMqtt.on('message', function (topic, message) {
 	// message is Buffer
 	console.log(message.toString());
@@ -92,24 +101,26 @@ clientMqtt.on('message', function (topic, message) {
 
 /* ----------------------------------------------------------------------- */
 
-const Tshark = require('./tshark.js');
-let tshark;
-try {
-	tshark = Tshark();
-	tshark.emitterInstance.on('newDevice', (device) => {
-		try {
-			clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device)}`);
-			console.log(`Got new device with MAC ${JSON.stringify(device)}`);
-		} catch (e){
-			console.error('lost MQTT connection');
-			console.error(e);
-		}
-	});
-} catch (e) {
-	clientMqtt.publish('ADMIN' , e.message);
-	console.error('Error while strating tshark.js');
-	console.error(e);
-	shutdown();
+function startTshark() {
+	const Tshark = require('./tshark.js');
+	let tshark;
+	try {
+		tshark = Tshark();
+		tshark.emitterInstance.on('newDevice', (device) => {
+			try {
+				clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device)}`);
+				console.log(`Got new device with MAC ${JSON.stringify(device)}`);
+			} catch (e){
+				console.error('[lost MQTT connection]');
+				console.error(e);
+			}
+		});
+	} catch (e) {
+		console.error('[Error while strating tshark.js]');
+		console.error(e);
+		clientMqtt.publish('ADMIN' , e.message);
+		shutdown();
+	}
 }
 
 function shutdown(){
@@ -118,13 +129,13 @@ function shutdown(){
 		clientMqtt.end();
 		clientMqtt.publish('ADMIN', appUtil.hostId + ' is going down.');
 	} catch (e){
-		console.error('Error while app MQTT shutdown');
+		console.error('[Error while app MQTT shutdown]');
 		console.error(e);
 	}
 	try {
 		tshark.shutdown();
 	} catch (e){
-		console.error('Error while app tshark shutdown');
+		console.error('[Error while app tshark shutdown]');
 		console.error(e);
 	}
 }
