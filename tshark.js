@@ -65,7 +65,7 @@ function updedateDevices(data) {
 		devices[wlan.sa] = new Device(wlan.sa, wlan.sa_resolved);
 	}
 	devices[wlan.sa].rssHistory[curTime] = radiotap.dbm_antsignal;
-	devices[wlan.sa].ssidHistory[ssid] = curTime;
+	devices[wlan.sa].ssidHistory[wlan_mgt.ssid] = curTime;
 	devices[wlan.sa].taHistory.push({'ta': wlan.ta, 'ta_resolved': wlan.ta_resolved});
 }
 
