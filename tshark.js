@@ -1,8 +1,7 @@
-
 const csv = require("fast-csv");
 const EventEmitter = require("events");
 
-let devices = [];
+let devices = {};
 
 const emitterInstance = new EventEmitter();
 
@@ -28,16 +27,16 @@ class Device {
 		for (let rss in this.rssHistory){
 			rssHistory[rss] = this.rssHistory[rss];
 		}
-		let ssidHistory = "";
+		let ssidHistory = {};
 		for (let ssid in this.ssidHistory){
 			ssidHistory[ssid] = this.ssidHistory[ssid];
 		}
 		return {
-			"mac":this.mac,
-			"macResolved":this.macResolved,
-			"rssHistory":rssHistory,
-			"ssidHistory":ssidHistory,
-			"rssStatistics":this.rssStatistics,
+			"mac"			: this.mac,
+			"macResolved"	: this.macResolved,
+			"rssHistory"	: rssHistory,
+			"ssidHistory"	: ssidHistory,
+			"rssStatistics"	: this.rssStatistics,
 		};
 	}
 }
@@ -46,7 +45,7 @@ function updedateDevices(data) {
 	let mac = data[0];
 	let rss = data[1];
 	let ssid = data[2];
-	let macResolved =	data[3];
+	let macResolved = data[3];
 	let curTime = (new Date()).toISOString();
 	if (! devices[mac]){
 		devices[mac] = new Device(mac, macResolved);
@@ -176,11 +175,15 @@ let csvStream = csv()
 let tsharkChild;
 function shutdown(){
 	try {
+		if (csvStream == undefined){
+			console.error('csvStream == undefined while tshark.js shutdown');
+		}
 		process.stdin.unpipe(csvStream);
 		csvStream.end();
 		tsharkChild.kill();
 	} catch (e){
-		console.error(e.message + 'while tshark.js shutdown');
+		console.error('Error while tshark.js shutdown');
+		console.error(e);
 	}
 }
 
@@ -199,7 +202,7 @@ module.exports = () => {
 	tsharkChild.stdout.pipe(csvStream);
 
 	return {
-		getDevices			: () => Array.from(devices),
+		getDevices			: () => {return devices;},
 		emitterInstance		: emitterInstance,
 		shutdown			: shutdown,
 		getReport			: getReport,

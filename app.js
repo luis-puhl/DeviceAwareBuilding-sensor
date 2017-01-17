@@ -47,7 +47,7 @@ function doList() {
 	let report = {
 		host		: appUtil.hostId,
 		uptime		: process.uptime(),
-		sensor		: Object.keys(tshark.getDevices()),
+		sensor		: tshark.getDevices(),
 	};
 	clientMqtt.publish('devices/report', JSON.stringify(report));
 }
@@ -102,24 +102,29 @@ try {
 			console.log(`Got new device with MAC ${JSON.stringify(device)}`);
 		} catch (e){
 			console.error('lost MQTT connection');
+			console.error(e);
 		}
 	});
 } catch (e) {
 	clientMqtt.publish('ADMIN' , e.message);
+	console.error('Error while strating tshark.js');
+	console.error(e);
 	shutdown();
 }
 
 function shutdown(){
-	console.log('Shutdown by remote call');
+	console.log('Shutdown');
 	try {
 		clientMqtt.end();
 		clientMqtt.publish('ADMIN', appUtil.hostId + ' is going down.');
 	} catch (e){
-		console.error(e.message + 'while app MQTT shutdown');
+		console.error('Error while app MQTT shutdown');
+		console.error(e);
 	}
 	try {
 		tshark.shutdown();
 	} catch (e){
-		console.error(e.message + 'while app tshark shutdown');
+		console.error('Error while app tshark shutdown');
+		console.error(e);
 	}
 }
