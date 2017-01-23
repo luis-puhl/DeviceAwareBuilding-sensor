@@ -15,7 +15,7 @@ for (let ifname in ifaces){
 		if (iface.internal !== true){
 			// save IP for later
 			ips.push(iface.address);
-			
+
 			if (alias >= 1) {
 				// this single interface has multiple ipv4 addresses
 				console.log(ifname + ':' + alias, iface.address);
@@ -29,6 +29,34 @@ for (let ifname in ifaces){
 }
 
 exports.ips = ips;
+
+/* ----------------------------------------------------------------------- */
+
+function loadConfig() {
+	let config = require('./.config');
+	// remove localization info if wrong host
+	if (config.hostId != hostId){
+		config.hostId = hostId;
+		delete config.lat;
+		delete config.lon;
+	}
+	return config;
+}
+
+exports.loadConfig = loadConfig;
+
+function writeConfig(config){
+	let fs = require('fs');
+	fs.writeFile(".config", JSON.stringify(config), function(err) {
+		if (err) {
+			return console.log(err);
+		}
+
+		console.log("The file was saved!");
+	});
+}
+
+exports.writeConfig = writeConfig;
 
 /* ----------------------------------------------------------------------- */
 

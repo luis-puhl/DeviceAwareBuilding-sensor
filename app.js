@@ -41,88 +41,6 @@ function doList() {
 	clientMqtt.publish('devices/report', JSON.stringify(report));
 }
 
-/* ----------------------------------------------------------------------- */
-
-const mqtt = require('mqtt');
-const config = require('./.config');
-let clientMqtt	= mqtt.connect(`mqtt://${config.mqttHost}:${config.mqttPort}`, {
-	username	: config.mqttUser,
-	password	: config.mqttPwd,
-	will		: {
-		topic		: appUtil.hostId,
-		payload		: `Last will: Host ${appUtil.hostId} is down from ${JSON.stringify(appUtil.ips)}`,
-		qos			: 2,
-		retain		: true
-	},
-})
-
-clientMqtt.on('error', function (err) {
-	console.error('[MQTT error]');
-	console.error(err);
-})
-clientMqtt.on('connect', function () {
-	console.log('MQTT connect');
-	clientMqtt.subscribe('ADMIN');
-	clientMqtt.subscribe('devices');
-
-	clientMqtt.publish('ADMIN', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`);
-	startTshark();
-})
-clientMqtt.on('message', function (topic, message) {
-	// message is Buffer
-	console.log(message.toString());
-	switch (topic.toString()){
-		case 'devices':
-			switch (message.toString()) {
-				case 'list':
-					doList();
-					break;
-				case 'report':
-					doReport();
-					break;
-				default:
-					doDeiviceReport(message.toString());
-			}
-			break;
-		case 'ADMIN':
-			switch (message.toString()) {
-				case 'shutdown':
-					shutdown();
-					break;
-				case 'echo':
-					clientMqtt.publish(topic, appUtil.hostId + ' ack');
-					break;
-				default:
-			}
-			break;
-		default:
-	}
-})
-
-/* ----------------------------------------------------------------------- */
-
-function startTshark() {
-	const Tshark = require('./tshark.js');
-	let tshark;
-	try {
-		tshark = Tshark();
-		tshark.emitterInstance.on('newDevice', (device) => {
-			try {
-				clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device)}`);
-				console.log(`Got new device with MAC ${JSON.stringify(device)}`);
-			} catch (e){
-				console.error('[lost MQTT connection]');
-				console.error(e);
-			}
-		});
-	} catch (e) {
-		console.error('[Error while strating tshark.js]');
-		console.error(e);
-		clientMqtt.publish('ADMIN' , e.message);
-		shutdown();
-	}
-}
-
 function shutdown(){
 	console.log('Shutdown');
 	try {
@@ -139,3 +57,115 @@ function shutdown(){
 		console.error(e);
 	}
 }
+
+function onNewDevice(device) {
+	try {
+		clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device)}`);
+		console.log(`Got new device with MAC ${JSON.stringify(device)}`);
+	} catch (e){
+		console.error('[lost MQTT connection]');
+		console.error(e);
+	}
+}
+
+/* ----------------------------------------------------------------------- */
+
+function startTshark() {
+	const Tshark = require('./tshark.js');
+	let tshark;
+	try {
+		tshark = Tshark();
+		tshark.emitterInstance.on('newDevice', onNewDevice);
+	} catch (e) {
+		console.error('[Error while strating tshark.js]');
+		console.error(e);
+		clientMqtt.publish('ADMIN' , e.message);
+		if (config.shutdownOnTsharkFail){
+			shutdown();
+		}
+	}
+}
+
+/* ----------------------------------------------------------------------- */
+
+const mqtt = require('mqtt');
+const config = appUtil.loadConfig();
+let clientMqtt	= mqtt.connect(`mqtt://${config.mqttHost}:${config.mqttPort}`, {
+	username	: config.mqttUser,
+	password	: config.mqttPwd,
+	will		: {
+		topic		: appUtil.hostId,
+		payload		: `Last will: Host ${appUtil.hostId} is down from ${JSON.stringify(appUtil.ips)}`,
+		qos			: 2,
+		retain		: true
+	},
+})
+
+clientMqtt.on('error', function (err) {
+	console.error('[MQTT error]');
+	console.error(err);
+});
+clientMqtt.on('connect', function () {
+	console.log('MQTT connect');
+	clientMqtt.subscribe('ADMIN');
+	clientMqtt.subscribe('devices');
+
+	clientMqtt.publish('ADMIN', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`);
+	startTshark();
+});
+clientMqtt.on('message', function (topic, message) {
+	// message is Buffer
+	console.log(message.toString());
+	switch (topic.toString()){
+		case 'devices':
+			switch (message.toString()) {
+				case 'list':
+					doList();
+					break;
+				case 'report':
+					doReport();
+					break;
+				default:
+					let device = {};
+					try {
+						device = JSON.parse(message.toString());
+					} catch (e){
+						console.error('[No device JSON provided by MQTT]');
+						console.error(e);
+						break;
+					}
+					doDeiviceReport(device.macAddress);
+			}
+			break;
+		case 'ADMIN':
+			switch (message.toString()) {
+				case 'shutdown':
+					shutdown();
+					break;
+				case 'echo':
+					clientMqtt.publish(topic, appUtil.hostId + ' ack');
+					break;
+				default:
+					let config = {};
+					try {
+						config = JSON.parse(message.toString());
+					} catch (e){
+						console.error('[No config JSON provided by MQTT]');
+						console.error(e);
+						break;
+					}
+					if (config['host'] == appUtil.hostId){
+						if (config['lat'] && config['lon']){
+							config.hostId = appUtil.hostId;
+							config.lat = lat;
+							config.lon = lon;
+							appUtil.writeConfig(config);
+						}
+					}
+			}
+			break;
+		default:
+	}
+});
+
+/* ----------------------------------------------------------------------- */

@@ -42,7 +42,9 @@ class Device {
 	}
 }
 
-function updedateDevices(data) {
+/* ----------------------------------------------------------------------- */
+
+function updateDevices(data) {
 	let wlan = {
 		sa				: data[0], // sender address
 		sa_resolved		: data[1], // sender address resolved
@@ -56,7 +58,6 @@ function updedateDevices(data) {
 		ssid			: data[5],
 	};
 
-
 	let curTime = (new Date()).toISOString();
 	if (! devices[wlan.sa]){
 		devices[wlan.sa] = new Device(wlan.sa, wlan.sa_resolved);
@@ -66,7 +67,23 @@ function updedateDevices(data) {
 	devices[wlan.sa].taHistory.push({'ta': wlan.ta, 'ta_resolved': wlan.ta_resolved});
 }
 
-function getReport(){
+/*Math functions -------------------------------------------------------------*/
+function arrayAvg(array){ //Avg function
+	let sum = 0;
+	for(let i = 0; i < array.length; i++) {
+		sum += array[i];
+	}
+	return sum / array.length;
+}
+function arrayVariance(array, avg){//variance function
+	let sum = 0;
+	for(let i = 0; i < array.length; i++){
+		sum += Math.pow(( array[i] - avg ), 2);
+	}
+	return sum / (array.length - 1);
+}
+
+function updatedeDeviceStatistics() {
 	let rssDevices = [];
 	let devicesCout = 0;
 	for (let deviceKey in devices){
@@ -94,36 +111,37 @@ function getReport(){
 	let avgDevices = arrayAvg(rssDevices);
 	let varianceDevices = arrayVariance(rssDevices, avgDevices);
 	let std = Math.sqrt(varianceDevices);
-
 	return {
 		devicesCout					: devicesCout,
 		overallAverage				: avgDevices,
 		overallStandardDeviation	: std,
 	}
 }
+
+/* ----------------------------------------------------------------------- */
+
+function getReport(){
+	let statistics = updatedeDeviceStatistics();
+	return {
+		devicesCout					: statistics.devicesCout,
+		overallAverage				: statistics.avgDevices,
+		overallStandardDeviation	: statistics.std,
+	}
+}
+
 function getDeviceReport(macAddress) {
-	getReport();
+	updatedeDeviceStatistics();
 	return devices[macAddress];
 }
-/*Math functions -------------------------------------------------------------*/
-function arrayAvg(array){ //Avg function
-	let sum = 0;
-	for(let i = 0; i < array.length; i++) {
-		sum += array[i];
-	}
-	return sum / array.length;
-}
-function arrayVariance(array, avg){//variance function
-	let sum = 0;
-	for(let i = 0; i < array.length; i++){
-		sum += Math.pow(( array[i] - avg ), 2);
-	}
-	return sum / (array.length - 1);
+
+function getDevices() {
+	updatedeDeviceStatistics();
+	return devices;
 }
 
 /* ----------------------------------------------------------------------- */
-// processs startup
-function spawnTshark(){
+
+function getSuitableInterfaces() {
 	const execSync = require('child_process').execSync;
 	const stdioConf = {stdio: ['ignore', 'pipe', 'ignore']};
 
@@ -151,6 +169,12 @@ function spawnTshark(){
 	}
 
 	console.log(JSON.stringify( iwFaces ));
+	return iwFaces;
+}
+
+// processs startup
+function spawnTshark(){
+	let iwFaces = getSuitableInterfaces();
 
 	if (iwFaces.length < 1){
 		console.error('No suitable interface was found');
@@ -183,7 +207,7 @@ function spawnTshark(){
 
 let csvStream = csv()
 	.on("data", function(data){
-		updedateDevices(data);
+		updateDevices(data);
 	})
 	.on("end", function(){
 		console.log("done with tshark");
@@ -196,9 +220,10 @@ function shutdown(){
 	try {
 		if (csvStream == undefined){
 			console.error('csvStream == undefined while tshark.js shutdown');
+		} else {
+			tsharkChild.stdout.unpipe(csvStream);
+			csvStream.end();
 		}
-		process.stdin.unpipe(csvStream);
-		csvStream.end();
 		tsharkChild.kill();
 	} catch (e){
 		console.error('Error while tshark.js shutdown');
@@ -221,7 +246,7 @@ module.exports = () => {
 	tsharkChild.stdout.pipe(csvStream);
 
 	return {
-		getDevices			: () => {return devices;},
+		getDevices			: getDevices,
 		emitterInstance		: emitterInstance,
 		shutdown			: shutdown,
 		getReport			: getReport,
