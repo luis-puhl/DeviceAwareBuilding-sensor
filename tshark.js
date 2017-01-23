@@ -220,7 +220,7 @@ module.exports = () => {
 				data[2], // transmitter address
 				data[3], // transmitter address resolved
 				data[4], // potencia de sinal (rss)
-				data[5], // nome da rede no pacote Beacon
+				data[5] // nome da rede no pacote Beacon
 			);
 			processarPacote(packet);
 		})
