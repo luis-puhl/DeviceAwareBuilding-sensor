@@ -74,10 +74,9 @@ function onNewDevice(device) {
 }
 
 /* ----------------------------------------------------------------------- */
-
+let tshark;
 function startTshark() {
 	const Tshark = require('./tshark.js');
-	let tshark;
 	try {
 		tshark = Tshark();
 		tshark.emitterInstance.on('newDevice', onNewDevice);
