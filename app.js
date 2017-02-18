@@ -40,12 +40,17 @@ function doList() {
 	};
 	clientMqtt.publish('devices/report', JSON.stringify(report));
 }
+function cleanHistory() {
+	doList();
+	tshark.cleanHistory();
+}
+
 
 function shutdown(){
 	console.log('Shutdown');
 	try {
-		clientMqtt.end();
 		clientMqtt.publish('ADMIN', appUtil.hostId + ' is going down.');
+		clientMqtt.end();
 	} catch (e){
 		console.error('[Error while app MQTT shutdown]');
 		console.error(e);
@@ -124,6 +129,9 @@ clientMqtt.on('message', function (topic, message) {
 					break;
 				case 'report':
 					doReport();
+					break;
+				case 'cleanHistory':
+					cleanHistory();
 					break;
 				default:
 					let device = {};

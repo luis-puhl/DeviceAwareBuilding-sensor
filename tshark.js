@@ -129,6 +129,12 @@ function getReport(){
 
 /* ----------------------------------------------------------------------- */
 
+function cleanHistory() {
+	devices = {};
+}
+
+/* ----------------------------------------------------------------------- */
+
 function getSuitableInterfaces() {
 	const execSync = require('child_process').execSync;
 	const stdioConf = {stdio: ['ignore', 'pipe', 'ignore']};
@@ -220,7 +226,7 @@ module.exports = () => {
 				data[2], // transmitter address
 				data[3], // transmitter address resolved
 				data[4], // potencia de sinal (rss)
-				data[5], // nome da rede no pacote Beacon
+				data[5] // nome da rede no pacote Beacon
 			);
 			processarPacote(packet);
 		})
@@ -245,6 +251,7 @@ module.exports = () => {
 		emitterInstance		: emitterInstance,
 		shutdown			: shutdown,
 		getReport			: getReport,
+		cleanHistory		: cleanHistory,
 		getDevices			: () => {return devices;},
 		getDeviceReport		: (macAddress) => {return devices[macAddress];},
 	};
