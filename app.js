@@ -20,7 +20,7 @@ function doReport() {
 		uptime		: process.uptime(),
 		sensor		: tshark.getReport(),
 	};
-	clientMqtt.publish('devices/report', JSON.stringify(report));
+	clientMqtt.publish('dab/devices/report', JSON.stringify(report));
 }
 
 function doDeiviceReport(macAddress) {
@@ -29,7 +29,7 @@ function doDeiviceReport(macAddress) {
 		uptime		: process.uptime(),
 		sensor		: tshark.getDeviceReport(macAddress),
 	};
-	clientMqtt.publish('devices/report', JSON.stringify(report));
+	clientMqtt.publish('dab/devices/report', JSON.stringify(report));
 }
 
 function doList() {
@@ -38,12 +38,12 @@ function doList() {
 		uptime		: process.uptime(),
 		sensor		: tshark.getDevices(),
 	};
-	clientMqtt.publish('devices/report', JSON.stringify(report));
+	clientMqtt.publish('dab/devices/report', JSON.stringify(report));
 }
 function cleanHistory() {
 	doList();
 	tshark.cleanHistory();
-	clientMqtt.publish('devices/report', JSON.stringify({
+	clientMqtt.publish('dab/devices/report', JSON.stringify({
 		host: appUtil.hostId,
 		message: "History is now clean",
 	}));
@@ -53,7 +53,7 @@ function cleanHistory() {
 function shutdown(){
 	console.log('Shutdown');
 	try {
-		clientMqtt.publish('ADMIN', appUtil.hostId + ' is going down.');
+		clientMqtt.publish('dab/ADMIN', appUtil.hostId + ' is going down.');
 		clientMqtt.end();
 	} catch (e){
 		console.error('[Error while app MQTT shutdown]');
@@ -69,7 +69,7 @@ function shutdown(){
 
 function onNewDevice(device) {
 	try {
-		clientMqtt.publish(appUtil.hostId, `Got new device with MAC ${JSON.stringify(device)}`);
+		clientMqtt.publish('dab/sensors/' + appUtil.hostId, `Got new device with MAC ${JSON.stringify(device)}`);
 		console.log(`Got new device with MAC ${JSON.stringify(device)}`);
 	} catch (e){
 		console.error('[lost MQTT connection]');
@@ -87,7 +87,7 @@ function startTshark() {
 	} catch (e) {
 		console.error('[Error while strating tshark.js]');
 		console.error(e);
-		clientMqtt.publish('ADMIN' , e.message);
+		clientMqtt.publish('dab/admin' , e.message);
 		if (config.shutdownOnTsharkFail){
 			shutdown();
 		}
@@ -115,17 +115,17 @@ clientMqtt.on('error', function (err) {
 });
 clientMqtt.on('connect', function () {
 	console.log('MQTT connect');
-	clientMqtt.subscribe('ADMIN');
-	clientMqtt.subscribe('devices');
+	clientMqtt.subscribe('dab/admin');
+	clientMqtt.subscribe('dab/devices');
 
-	clientMqtt.publish('ADMIN', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`);
+	clientMqtt.publish('dab/admin', `Hello  ${appUtil.hostId}: got ips: ${JSON.stringify(appUtil.ips)}`);
 	startTshark();
 });
 clientMqtt.on('message', function (topic, message) {
 	// message is Buffer
 	console.log(message.toString());
 	switch (topic.toString()){
-		case 'devices':
+		case 'dab/devices':
 			switch (message.toString()) {
 				case 'list':
 					doList();
@@ -148,13 +148,13 @@ clientMqtt.on('message', function (topic, message) {
 					doDeiviceReport(device.macAddress);
 			}
 			break;
-		case 'ADMIN':
+		case 'dab/admin':
 			switch (message.toString()) {
 				case 'shutdown':
 					shutdown();
 					break;
 				case 'echo':
-					clientMqtt.publish(topic, appUtil.hostId + ' ack');
+					clientMqtt.publish('dab/admin', appUtil.hostId + ' ack');
 					break;
 				default:
 					let config = {};
