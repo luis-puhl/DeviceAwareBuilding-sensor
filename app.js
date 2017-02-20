@@ -43,6 +43,10 @@ function doList() {
 function cleanHistory() {
 	doList();
 	tshark.cleanHistory();
+	clientMqtt.publish('devices/report', JSON.stringify({
+		host: appUtil.hostId,
+		message: "History is now clean",
+	}));
 }
 
 
