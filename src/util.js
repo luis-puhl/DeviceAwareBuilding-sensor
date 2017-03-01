@@ -1,4 +1,8 @@
 const os = require('os');
+const fs = require('fs');
+const childProcess = require('child_process')
+
+let config = require('./.config');
 
 const hostId = os.userInfo().username + '@' + os.hostname();
 exports.hostId = hostId;
@@ -33,7 +37,6 @@ exports.ips = ips;
 /* ----------------------------------------------------------------------- */
 
 function loadConfig() {
-	let config = require('./.config');
 	// remove localization info if wrong host
 	if (config.hostId != hostId){
 		config.hostId = hostId;
@@ -46,13 +49,12 @@ function loadConfig() {
 exports.loadConfig = loadConfig;
 
 function writeConfig(config){
-	let fs = require('fs');
-	fs.writeFile(".config", JSON.stringify(config), function(err) {
+	fs.writeFile(".config", JSON.stringify(config), (err) => {
 		if (err) {
 			return console.log(err);
 		}
-
 		console.log("The file was saved!");
+		return true;
 	});
 }
 
@@ -60,16 +62,17 @@ exports.writeConfig = writeConfig;
 
 /* ----------------------------------------------------------------------- */
 
-/// autoupdate
+// autoupdate
 
 function autoUpdate(){
-	const execSync = require('child_process').execSync;
+	const execSync = childProcess.execSync;
 	let gitPull = execSync('git pull').toString();
 	console.log(gitPull);
 	if ( gitPull != "Already up-to-date.\n" ){
 		console.warn("Just Updated, RESETING");
-		process.exit(0);
+		return true;
 	}
+	return false;
 }
 
 exports.autoUpdate = autoUpdate;

@@ -13,5 +13,9 @@
     "forever": "^0.15.3",
     "forever-service": "^0.5.9",
     "mqtt": "^2.2.1"
+  },
+  "devDependencies": {
+    "eslint": "^3.16.1",
+    "eslint-config-google": "^0.7.1"
   }
 }

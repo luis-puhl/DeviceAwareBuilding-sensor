@@ -1,7 +1,9 @@
 const csv = require("fast-csv");
 const EventEmitter = require("events");
+const childProcess = require('child_process');
 
-let devices = {};	// lista indexada de dispositivos
+// lista indexada de dispositivos
+let devices = new Map();
 
 const emitterInstance = new EventEmitter();
 
@@ -12,8 +14,8 @@ class Device {
 		this.mac = mac;
 		this.macResolved = macResolved;
 		this.rssHistory = [];
-		this.ssidHistory = {};
-		this.taHistory = {};
+		this.ssidHistory = new Map();
+		this.taHistory = new Map();
 	}
 	get rssStatistics(){
 		let sum = 0;
@@ -28,7 +30,7 @@ class Device {
 
 			sum = 0;
 			for (let rss of this.rssHistory){
-				sum += Math.pow(( rss - avg ), 2);
+				sum += Math.pow( rss - avg , 2);
 			}
 			variance = sum / (this.rssHistory.length - 1);
 			stdDeviation = Math.sqrt(variance);
@@ -42,6 +44,15 @@ class Device {
 		};
 	}
 	toJSON() {
+		let ssidHistory = new Map();
+		for (let [ssidKey, ssidVal] of this.ssidHistory.entries()) {
+			ssidHistory.set(ssidKey, ssidVal);
+		}
+		let taHistory = new Map();
+		for (let [taKey, taVal] of this.taHistory.entries()) {
+			taHistory.set(taKey, taVal);
+		}
+		/*
 		let ssidHistory = {};
 		for (let ssid in this.ssidHistory){
 			ssidHistory[ssid] = this.ssidHistory[ssid];
@@ -50,6 +61,7 @@ class Device {
 		for (let ta in this.taHistory){
 			taHistory[ta] = this.taHistory[ta];
 		}
+		*/
 		return {
 			mac				: this.mac,
 			macResolved		: this.macResolved,
@@ -61,14 +73,14 @@ class Device {
 	}
 	appendPacket(packet){
 		let rss = packet.radiotap.dbm_antsignal;
-		let number = parseInt( rss.split(",")[0].split('-')[1] );
+		let number = Number.parseInt( rss.split(",")[0].split('-')[1], 10);
 		this.rssHistory.push(number);
 
 		let curTime = ( new Date() ).toISOString();
-		this.ssidHistory[packet.wlan_mgt.ssid] = curTime;
+		this.ssidHistory[packet.wlanMgt.ssid] = curTime;
 		this.taHistory[packet.wlan.ta] = {
-			ta			: packet.wlan.ta,
-			ta_resolved	: packet.wlan.ta_resolved,
+			ta				: packet.wlan.ta,
+			'ta_resolved'	: packet.wlan.ta_resolved,
 		};
 	}
 }
@@ -76,17 +88,22 @@ class Device {
 /* ----------------------------------------------------------------------- */
 
 class Packet {
-	constructor(sa, sa_resolved, ta, ta_resolved, dbm_antsignal, ssid){
+	constructor(sa, saResolved, ta, taResolved, dbmAntsignal, ssid){
 		this.wlan = {
-			sa				: sa,				// sender address
-			sa_resolved		: sa_resolved,		// sender address resolved
-			ta				: ta, 				// transmitter address
-			ta_resolved		: ta_resolved,		// transmitter address resolved
+			// sender address
+			sa				: sa,
+			// sender address resolved
+			'sa_resolved'	: saResolved,
+			// transmitter address
+			ta				: ta,
+			// transmitter address resolved
+			'ta_resolved'	: taResolved,
 		};
 		this.radiotap = {
-			dbm_antsignal	: dbm_antsignal,	// potencia de sinal (rss)
+			// potencia de sinal (rss)
+			'dbm_antsignal'	: dbmAntsignal,
 		};
-		this.wlan_mgt = {
+		this.wlanMgt = {
 			ssid			: ssid, 			// nome da rede no pacote Beacon
 		};
 	}
@@ -96,7 +113,7 @@ class Packet {
 
 function processarPacote(packet) {
 	let sa = packet.wlan.sa;
-	if (! devices[sa]){
+	if ( !devices[sa] ){
 		devices[sa] = new Device(sa, packet.wlan.sa_resolved);
 		emitterInstance.emit('newDevice', devices[sa]);
 	}
@@ -110,8 +127,7 @@ function getReport(){
 	let totalRss = 0;
 	let totalPackets = 0;
 
-	for (let deviceKey in devices){
-		let device = devices[deviceKey];
+	for (let device of devices.values()) {
 		devicesCout++;
 
 		let deviceRss = device.rssStatistics;
@@ -119,7 +135,7 @@ function getReport(){
 		totalRss += deviceRss.size * deviceRss.avg;
 		totalPackets += deviceRss.size;
 	}
-	//statistics for all devices
+	// statistics for all devices
 	let avgDevices = totalRss / totalPackets;
 	return {
 		devicesCout		: devicesCout,
@@ -136,12 +152,13 @@ function cleanHistory() {
 /* ----------------------------------------------------------------------- */
 
 function getSuitableInterfaces() {
-	const execSync = require('child_process').execSync;
 	const stdioConf = {stdio: ['ignore', 'pipe', 'ignore']};
 
 	let iwConfList = "";
 	try {
-		iwConfList = execSync('iwconfig | grep wlan', stdioConf).toString().split('\n');
+		iwConfList = childProcess.execSync('iwconfig | grep wlan', stdioConf).
+			toString().
+			split('\n');
 	} catch (e){
 		console.error('No suitable interface was found');
 		throw new Error('No suitable interface was found');
@@ -151,14 +168,13 @@ function getSuitableInterfaces() {
 		let iface = iwFace.split('\t')[0].split(' ')[0];
 		if (iface.length > 1){
 			try {
-				execSync(`sudo ifconfig ${iface} down`, stdioConf);
-				execSync(`sudo iwconfig ${iface} mode monitor`, stdioConf);
-				execSync(`sudo ifconfig ${iface} up`, stdioConf);
+				childProcess.execSync(`sudo ifconfig ${iface} down`, stdioConf);
+				childProcess.execSync(`sudo iwconfig ${iface} mode monitor`, stdioConf);
+				childProcess.execSync(`sudo ifconfig ${iface} up`, stdioConf);
+				iwFaces.push( iface );
 			} catch (e) {
 				console.error(`iface ${iface} will not be used`);
-				continue;
 			}
-			iwFaces.push( iface );
 		}
 	}
 
@@ -177,7 +193,7 @@ function spawnTshark(){
 
 	let childIface = iwFaces[0];
 
-	const spawn = require('child_process').spawn;
+	const spawn = childProcess.spawn;
 	const tsharkChild = spawn(
 		'tshark', [
 			'-I',
@@ -218,19 +234,25 @@ function shutdown(){
 
 module.exports = () => {
 
-	csvStream = csv()
-		.on("data", function(data){
+	csvStream = csv().
+		on("data", function(data){
 			let packet = new Packet(
-				data[0], // sender address
-				data[1], // sender address resolved
-				data[2], // transmitter address
-				data[3], // transmitter address resolved
-				data[4], // potencia de sinal (rss)
-				data[5] // nome da rede no pacote Beacon
+				// sender address
+				data[0],
+				// sender address resolved
+				data[1],
+				// transmitter address
+				data[2],
+				// transmitter address resolved
+				data[3],
+				// potencia de sinal (rss)
+				data[4],
+				// nome da rede no pacote Beacon
+				data[5]
 			);
 			processarPacote(packet);
-		})
-		.on("end", function(){
+		}).
+		on("end", function(){
 			console.log("done with csv");
 		});
 
@@ -252,7 +274,7 @@ module.exports = () => {
 		shutdown			: shutdown,
 		getReport			: getReport,
 		cleanHistory		: cleanHistory,
-		getDevices			: () => {return devices;},
-		getDeviceReport		: (macAddress) => {return devices[macAddress];},
+		getDevices			: () => devices,
+		getDeviceReport		: (macAddress) => devices.get(macAddress),
 	};
 }
